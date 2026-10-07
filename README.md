@@ -74,7 +74,7 @@ From your application's root folder (the one containing `composer.json`):
 
 ```bash
 composer require arout/rhapsody-forms
-php rhapsody module:install forms
+php rhapsody module:install arout/rhapsody-forms
 ```
 
 The second command activates the module. Composer having the package is not enough on its own: activation is a separate step, tracked by the framework.
