@@ -73,7 +73,7 @@ This is the **Core** tier of the "Rhapsody Core Team" module suite. It is writte
 From your application's root folder (the one containing `composer.json`):
 
 ```bash
-composer require arout/forms
+composer require arout/rhapsody-forms
 php rhapsody module:install forms
 ```
 
