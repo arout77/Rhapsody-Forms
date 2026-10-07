@@ -2,7 +2,7 @@
   "name": "arout/rhapsody-forms",
   "type": "rhapsody-module",
   "version": "1.0.0",
-  "rhapsody_core": "^2.0",
+  "rhapsody_core": "^2.3.0",
   "title": "Forms",
   "description": "Define forms in code, drop them into any page, and manage the submissions in an inbox with email notifications and built-in spam protection.",
   "category": "utility",
