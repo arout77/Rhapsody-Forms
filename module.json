@@ -1,0 +1,31 @@
+{
+  "name": "arout/forms",
+  "type": "rhapsody-module",
+  "version": "1.0.0",
+  "rhapsody_core": "^1.0",
+  "title": "Forms",
+  "description": "Define forms in code, drop them into any page, and manage the submissions in an inbox with email notifications and built-in spam protection.",
+  "category": "utility",
+  "license": "proprietary",
+  "provider": "Arout\\Forms\\ModuleProvider",
+  "permissions": {
+    "routes.register": { "prefix": "forms" },
+    "database.access": {},
+    "events.dispatch": {
+      "dispatch": [
+        "Arout\\Forms\\Events\\FormSubmitting",
+        "Arout\\Forms\\Events\\FormSubmitted"
+      ]
+    },
+    "twig.functions": {},
+    "settings.manage": {},
+    "mail.send": {}
+  },
+  "settings_schema": [
+    { "key": "notify_email", "type": "string", "default": "", "label": "Default notification email", "help": "Where new submissions are emailed unless a form sets its own address. Leave empty to disable email." },
+    { "key": "min_submit_seconds", "type": "number", "default": 2, "label": "Minimum seconds before a form can be submitted", "help": "Bots usually submit instantly. Real visitors take longer than this." },
+    { "key": "trusted_proxy_header", "type": "string", "default": "", "label": "Trusted proxy header", "help": "Only set this if the site sits behind a proxy or CDN you control, e.g. X-Forwarded-For or CF-Connecting-IP. Leave empty otherwise: a client can fake these headers." },
+    { "key": "retention_days", "type": "number", "default": 0, "label": "Delete submissions after (days)", "help": "0 keeps submissions until you delete them." },
+    { "key": "include_css", "type": "boolean", "default": true, "label": "Include the default form styles", "help": "Turn off if your theme styles the .rforms-* classes itself." }
+  ]
+}
