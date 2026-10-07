@@ -1,5 +1,5 @@
 {
-  "name": "arout/forms",
+  "name": "arout/rhapsody-forms",
   "type": "rhapsody-module",
   "version": "1.0.0",
   "rhapsody_core": "^1.0",

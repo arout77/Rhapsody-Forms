@@ -1,5 +1,5 @@
 {
-    "name": "arout/forms",
+    "name": "arout/rhapsody-forms",
     "description": "Forms for Rhapsody: code-defined forms, spam protection, a submissions inbox and email notifications.",
     "type": "rhapsody-module",
     "license": "proprietary",
