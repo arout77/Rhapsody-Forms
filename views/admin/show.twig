@@ -1,0 +1,42 @@
+{#
+  One submission. Opening it marks it as read (the controller does that).
+#}
+{% extends "@core/module-layout.twig" %}
+
+{% block module_content %}
+    <header class="rhapsody-page-header">
+        <h1 class="rhapsody-title">Submission #{{ submission.id }}</h1>
+        <p class="rhapsody-muted">{{ submission.form_name }}, received {{ submission.created_at }} UTC.</p>
+    </header>
+
+    <div class="rhapsody-card">
+        <div class="rhapsody-table-wrap">
+            <table class="rhapsody-table">
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <th scope="row">{{ row.label }}</th>
+                            <td>{{ row.value|nl2br }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="rhapsody-help rhapsody-muted">Notification email: <span class="rhapsody-badge">{{ submission.notify_status }}</span>
+            {% if submission.notify_status == 'failed' %} The mail server refused it; the details are in the PHP error log.{% endif %}
+            {% if submission.notify_status == 'skipped' %} No email was attempted (mail isn't configured, or this form has no recipient).{% endif %}
+        </p>
+    </div>
+
+    <div class="rhapsody-actions">
+        <a class="rhapsody-btn rhapsody-btn--secondary" href="{{ back_url }}">Back to the inbox</a>
+        <form method="post" action="{{ actions.unread }}">
+            {{ csrf_field()|raw }}
+            <button type="submit" class="rhapsody-btn rhapsody-btn--secondary">Mark as unread</button>
+        </form>
+        <form method="post" action="{{ actions.delete }}" onsubmit="return confirm('Delete this submission for good?');">
+            {{ csrf_field()|raw }}
+            <button type="submit" class="rhapsody-btn rhapsody-btn--danger">Delete</button>
+        </form>
+    </div>
+{% endblock %}

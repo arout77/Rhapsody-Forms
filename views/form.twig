@@ -1,0 +1,68 @@
+{#
+  views/form.twig: the public form, drawn by {{ rhapsody_form('slug') }}.
+
+  Everything it needs arrives in one array built by FormViewModel; there is
+  no logic here beyond printing it. Output is auto-escaped except the two
+  values that are trusted HTML: the stylesheet and the captcha widget.
+#}
+{% if css %}<style id="rforms-css">{{ css|raw }}</style>{% endif %}
+<form class="rforms" id="{{ form.id }}" method="post" action="{{ action }}" data-rforms="{{ form.slug }}">
+    {% if alert %}
+        <div class="rforms__alert rforms__alert--{{ alert.type }}" role="{{ alert.type == 'error' ? 'alert' : 'status' }}">{{ alert.message }}</div>
+    {% endif %}
+
+    {{ csrf_field()|raw }}
+    <input type="hidden" name="_ts" value="{{ token }}">
+    <input type="hidden" name="_return" value="{{ return_path }}">
+
+    {# Honeypot: real visitors never see or reach it. Positioned off-screen (not display:none, which many bots skip) with inline styles, so it stays hidden even when the default stylesheet is turned off. #}
+    <div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+        <label for="{{ form.id }}-hp">Leave this field empty</label>
+        <input type="text" id="{{ form.id }}-hp" name="hp_website" value="" tabindex="-1" autocomplete="off">
+    </div>
+
+    {% for f in fields %}
+        {% if f.type == 'hidden' %}
+            <input type="hidden" name="{{ f.name }}" value="{{ f.value }}">
+        {% else %}
+            <div class="rforms__field{% if f.error %} rforms__field--error{% endif %}">
+                {% if f.type == 'checkbox' %}
+                    <label class="rforms__choice" for="{{ f.id }}">
+                        <input type="checkbox" id="{{ f.id }}" name="{{ f.name }}" value="1"{% if f.value %} checked{% endif %}{% if f.required %} required{% endif %}{% if f.error %} aria-invalid="true" aria-describedby="{{ f.id }}-error"{% endif %}>
+                        <span>{{ f.label }}</span>
+                    </label>
+                {% elseif f.type == 'radio' %}
+                    <span class="rforms__label" id="{{ f.id }}-label">{{ f.label }}</span>
+                    <div role="radiogroup" aria-labelledby="{{ f.id }}-label"{% if f.error %} aria-describedby="{{ f.id }}-error"{% endif %}>
+                        {% for o in f.options %}
+                            <label class="rforms__choice" for="{{ f.id }}-{{ loop.index }}">
+                                <input type="radio" id="{{ f.id }}-{{ loop.index }}" name="{{ f.name }}" value="{{ o.value }}"{% if o.selected %} checked{% endif %}{% if f.required %} required{% endif %}>
+                                <span>{{ o.label }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <label class="rforms__label" for="{{ f.id }}">{{ f.label }}</label>
+                    {% if f.type == 'textarea' %}
+                        <textarea class="rforms__input" id="{{ f.id }}" name="{{ f.name }}"{% if f.placeholder %} placeholder="{{ f.placeholder }}"{% endif %}{% for k, v in f.attrs %} {{ k }}="{{ v }}"{% endfor %}{% if f.required %} required{% endif %}{% if f.error %} aria-invalid="true" aria-describedby="{{ f.id }}-error"{% endif %}>{{ f.value }}</textarea>
+                    {% elseif f.type == 'select' %}
+                        <select class="rforms__input" id="{{ f.id }}" name="{{ f.name }}"{% if f.required %} required{% endif %}{% if f.error %} aria-invalid="true" aria-describedby="{{ f.id }}-error"{% endif %}>
+                            <option value=""{% if f.value == '' %} selected{% endif %}>Choose...</option>
+                            {% for o in f.options %}
+                                <option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <input class="rforms__input" type="{{ f.type }}" id="{{ f.id }}" name="{{ f.name }}" value="{{ f.value }}"{% if f.placeholder %} placeholder="{{ f.placeholder }}"{% endif %}{% if f.type == 'number' %} step="any"{% endif %}{% for k, v in f.attrs %} {{ k }}="{{ v }}"{% endfor %}{% if f.required %} required{% endif %}{% if f.error %} aria-invalid="true" aria-describedby="{{ f.id }}-error"{% endif %}>
+                    {% endif %}
+                {% endif %}
+                {% if f.help %}<span class="rforms__help">{{ f.help }}</span>{% endif %}
+                {% if f.error %}<span class="rforms__error" id="{{ f.id }}-error">{{ f.error }}</span>{% endif %}
+            </div>
+        {% endif %}
+    {% endfor %}
+
+    {{ captcha_html|raw }}
+
+    <button type="submit" class="rforms__submit">{{ form.submit_label }}</button>
+</form>

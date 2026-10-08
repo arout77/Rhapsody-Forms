@@ -2,7 +2,7 @@
 
 Define a form in a few lines of PHP, drop it into any page with one Twig tag, and manage what people send you in an admin inbox. Spam protection, email notifications and a developer-friendly event system are built in.
 
-**Package:** `arout/forms` &nbsp;|&nbsp; **Type:** Rhapsody module &nbsp;|&nbsp; **License:** proprietary
+**Package:** `arout/rhapsody-forms` &nbsp;|&nbsp; **Type:** Rhapsody module &nbsp;|&nbsp; **License:** proprietary
 
 This is the **Core** tier of the "Rhapsody Core Team" module suite. It is written for Rhapsody developers and agencies building sites for clients.
 
@@ -50,13 +50,13 @@ This is the **Core** tier of the "Rhapsody Core Team" module suite. It is writte
 
 | What | Why |
 |------|-----|
-| **Rhapsody core** with module support, and the core features listed below | The module relies on them. |
+| **Rhapsody v2.3.0 or newer** | Forms is built and tested against v2.3.0 and declares it as its minimum (`rhapsody_core` in `module.json`). |
 | **PHP 8.4.1 or newer** with the `mbstring` extension | Same as the framework. Names and messages are measured in characters, not bytes. |
 | **MySQL or MariaDB** with `utf8mb4` | Submissions are stored as UTF-8 JSON (emoji included). |
 | **Mail configured** (`MAIL_HOST` and friends in `.env`) | Only for email notifications. Forms work and save without it. |
 | **An admin gate** (see [The inbox](#access-who-can-open-the-inbox)) | So only you can open the inbox. |
 
-**Core features the module depends on.** Make sure the core release you run includes all of these:
+**Core features the module depends on.** Rhapsody v2.3.0 and newer provide all of these:
 
 - The `mail.send` module permission (`$context->mail()`).
 - The `events.dispatch` module permission.
@@ -74,12 +74,12 @@ From your application's root folder (the one containing `composer.json`):
 
 ```bash
 composer require arout/rhapsody-forms
-php rhapsody module:install arout/rhapsody-forms
+php rhapsody module:install rhapsody-forms
 ```
 
 The second command activates the module. Composer having the package is not enough on its own: activation is a separate step, tracked by the framework.
 
-Activation creates one database table, `mod_arout_forms_submissions` (see [Where your data lives](#where-your-data-lives-and-privacy)), and generates a private signing secret (see [Settings](#settings)).
+Activation creates one database table, `mod_arout_rhapsody_forms_submissions` (see [Where your data lives](#where-your-data-lives-and-privacy)), and generates a private signing secret (see [Settings](#settings)).
 
 ---
 
@@ -97,11 +97,12 @@ Several admins? Separate the ids with commas: `ADMIN_USER_IDS=1,7`. If your appl
 
 ### Step 2. Tell the module where to email submissions
 
-Open `storage/modules/arout-forms/settings.json` and set a default recipient:
+Open `storage/modules/arout-rhapsody-forms/settings.json`. The file was created when you installed the module and already holds a `signing_secret` line: **leave that line as it is** and add a recipient above it:
 
 ```json
 {
-    "notify_email": "owner@example.com"
+    "notify_email": "owner@example.com",
+    "signing_secret": "...leave the value that is already there..."
 }
 ```
 
@@ -331,7 +332,31 @@ The tag draws the whole form: the fields, the submit button, the hidden spam tra
   { "ok": true,  "message": "Thanks! Your message has been sent." }
   { "ok": false, "message": "Please fix the highlighted fields.", "errors": { "email": ["Email must be a valid email address."] } }
   ```
-  The HTTP status is `200` for success, `422` for problems the visitor can fix, `429` when they are being rate limited, and `500` if the server could not save the submission.
+  If the form has a `redirect` setting, a successful answer also carries `"redirect": "<url>"` for your script to follow.
+  The HTTP status is `200` for success, `422` for problems the visitor can fix, `429` when they are being rate limited, `404` if the form slug does not exist, and `500` if the server could not save the submission.
+
+  The easiest way to send a form from JavaScript is to let the browser collect every field, **including the hidden security fields** (`_token`, `_ts`, the honeypot), and ask for JSON back:
+
+  ```js
+  const form = document.querySelector('#rforms-contact');
+
+  form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const response = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          body: new FormData(form),
+      });
+      const result = await response.json();
+
+      alert(result.message);   // or show result.errors next to the fields
+  });
+  ```
+
+  Note that the framework's CSRF check reads `_token` from the request body (not from a header), which `new FormData(form)` includes for you.
+
+If you type a slug that is not registered, the tag prints a small HTML comment instead of a form (`<!-- rhapsody_form: no form is registered with the slug "..." -->`), so a typo never breaks the page. Look for it with View Source.
 
 ### Styling
 
@@ -447,7 +472,7 @@ The inbox is the admin area for everything people have sent you.
 |------|---------|--------------|
 | Inbox | `/forms/inbox` | Lists submissions, newest first, 25 per page. Filter by form or by new/read. |
 | One submission | `/forms/inbox/{id}` | Shows every answer, the time received (UTC), and the email status. Opening a submission marks it as read. |
-| Mark read/unread, delete | buttons on the pages above | Submissions are removed for good. |
+| Mark as unread, delete | buttons on a submission's page | Deleting removes the submission for good (you are asked to confirm). |
 | CSV export | `/forms/export` | Downloads submissions as a spreadsheet file. Add `?form=contact` to export one form only. |
 
 All of these pages are guarded by the admin gate. If you have a subdirectory install (for example `/marketplace/`), the addresses start with your base path.
@@ -488,7 +513,16 @@ Visitors who are not logged in are redirected to `/login`. Logged-in users who a
 
 ### CSV export and spreadsheets
 
-Columns are: submission id, form, received (UTC), status, then one column per field. The export is streamed in chunks, so large tables do not exhaust memory. Cells that begin with `=`, `+`, `-` or `@` are prefixed with a single quote, so a malicious visitor cannot smuggle a spreadsheet formula into your Excel file.
+**Which columns you get depends on how you export:**
+
+- **One form** (`?form=contact`, or pick a form in the inbox first): ID, form, received (UTC), status, then **one column per field** (using the field labels), then the email status. Select and radio answers show their option label.
+- **All forms** (no `form` filter): ID, form, received (UTC), status, email status, and a single **Answers (JSON)** column. Different forms have different fields, so one table cannot give each its own column.
+
+Other things to know:
+
+- **At most 25,000 submissions per file, oldest first.** The finished file is built in memory, so there is a ceiling. For a bigger archive, export one form at a time and delete what you have saved.
+- **Accents and emoji open correctly in Excel,** because the file starts with a UTF-8 byte-order mark.
+- **Formulas are neutralised.** Cells that begin with `=`, `+`, `-` or `@` (other than plain numbers) are prefixed with a single quote, so a malicious visitor cannot smuggle a spreadsheet formula into your file.
 
 ---
 
@@ -497,7 +531,7 @@ Columns are: submission id, form, received (UTC), status, then one column per fi
 Module-wide settings live in a small JSON file:
 
 ```
-storage/modules/arout-forms/settings.json
+storage/modules/arout-rhapsody-forms/settings.json
 ```
 
 (The folder is named after the module's slug.) Any setting you leave out uses its default.
@@ -509,8 +543,9 @@ storage/modules/arout-forms/settings.json
 | `trusted_proxy_header` | *(empty)* | The header your proxy or CDN uses to pass the visitor's address. **Leave empty unless you are behind a proxy you control.** See [If your site is behind a proxy or CDN](#if-your-site-is-behind-a-proxy-or-cdn). |
 | `retention_days` | `0` | Delete submissions older than this many days. `0` keeps everything until you delete it. |
 | `include_css` | `true` | Include the module's default form styles. Set `false` if your theme styles the `rforms__*` classes itself. |
+| `delete_data_on_uninstall` | `false` | If `true` when you uninstall the module, the submissions table is dropped as well. Off by default, so an uninstall never destroys your data. See [Uninstalling](#uninstalling). |
 
-Example:
+Example (keep your existing `signing_secret` line in the real file):
 
 ```json
 {
@@ -518,11 +553,12 @@ Example:
     "min_submit_seconds": 3,
     "trusted_proxy_header": "CF-Connecting-IP",
     "retention_days": 365,
-    "include_css": true
+    "include_css": true,
+    "delete_data_on_uninstall": false
 }
 ```
 
-**The signing secret.** On first activation the module generates a long random value and stores it in the same file as `signing_secret`. It signs the time-trap tokens and hashes visitor IP addresses. Don't share the file's contents, and don't commit it to version control. If you delete the entry, a new one is generated; the only effect is that forms already open in someone's browser will ask them to reload once, and the rate-limit history starts fresh.
+**The signing secret.** When you install the module (or on the first request after, if that was missed) it generates a long random value and stores it in the same file as `signing_secret`. It signs the time-trap tokens and hashes visitor IP addresses. Don't share the file's contents, and don't commit it to version control. If you delete the entry, a new one is generated; the only effect is that forms already open in someone's browser will ask them to reload once, and the rate-limit history starts fresh.
 
 **Retention without a scheduler.** There is no cron job. When `retention_days` is set, a small batch of expired submissions is cleared now and then as a side effect of new submissions (about one in every fifty). A very quiet site may keep expired items a little longer than the setting says.
 
@@ -610,7 +646,7 @@ A few rules of the road:
 
 ### The table
 
-The module creates one table, `mod_arout_forms_submissions`. The prefix is derived from the package name; it is the only table the module may write to.
+The module creates one table, `mod_arout_rhapsody_forms_submissions`. The prefix is derived from the package name; it is the only table the module may write to.
 
 | Column | Contents |
 |--------|----------|
@@ -653,14 +689,14 @@ For the developers and reviewers who want to know what the module does on your b
 - **Spreadsheet formula injection is blocked** in CSV exports (see above).
 - **The inbox fails closed.** If the admin middleware is not available, the inbox routes are not registered at all.
 - **Fake proxy headers are ignored** unless you explicitly trust a header.
-- **Least privilege.** The module declares exactly the permissions it needs: its own routes under `/forms`, its own table, sending mail, dispatching its two events, one Twig function and its settings file.
+- **Least privilege.** The module declares exactly the permissions it needs: its own routes under `/forms`, its own table, sending mail, dispatching its two events, one Twig extension (the `rhapsody_form` tag) and its settings file.
 
 ---
 
 ## Troubleshooting
 
 **The form does not appear.**
-Check that the slug in `rhapsody_form('...')` matches a registered form exactly, and that `FormRegistry::register()` runs on every request before the page renders (for example in your application's `bootstrap.php`). A mistake in a definition throws an error with a message naming the form and field.
+Check that the slug in `rhapsody_form('...')` matches a registered form exactly, and that `FormRegistry::register()` runs on every request before the page renders (for example in your application's `bootstrap.php`). A mistake in a definition throws an error with a message naming the form and field. If the page renders but the form is missing, View Source and search for `rhapsody_form`: the tag leaves a comment saying either that the slug is not registered or that the signing secret is unavailable (check that `storage/modules/arout-rhapsody-forms/` is writable by the web server).
 
 **"Something went wrong. Please reload the page and try again."**
 The form's time-trap token was missing or did not verify. Usual causes: the page is served from a **full-page cache** (the tokens are per visitor, so don't cache pages that contain forms), the signing secret was changed or deleted since the page loaded, or a script is posting to the form directly.
@@ -693,7 +729,7 @@ You are logged in but not an admin. See [Access: who can open the inbox](#access
 Your core is not new enough to include the built-in `admin` middleware, or your application overrides the middleware map without an `admin` entry. Update core, or add an `admin` entry. (The module's startup check normally prevents the inbox routes from being registered in this situation.)
 
 **Inbox pages are not found.**
-The module may not be activated. Run `php rhapsody list` to see the module commands your version provides, then `php rhapsody module:install forms`. Check the PHP error log for a line saying the inbox was not registered because the admin middleware is missing.
+The module may not be activated. Run `php rhapsody list` to see the module commands your version provides, then `php rhapsody module:install rhapsody-forms`. Check the PHP error log for a line saying the inbox was not registered because the admin middleware is missing.
 
 ---
 
@@ -708,6 +744,7 @@ These are deliberate boundaries of the Core tier, not bugs.
 - **No file uploads, multi-step forms or conditional fields** in Core.
 - **Retention clean-up is opportunistic** (see [Settings](#settings)): it depends on new submissions arriving.
 - **Listeners run synchronously,** so slow listeners slow the visitor's request.
+- **CSV export is capped at 25,000 rows per file** (see [CSV export and spreadsheets](#csv-export-and-spreadsheets)).
 - **Times are stored and shown in UTC.**
 - **A failing veto listener fails open:** if a spam filter crashes, the submission goes through rather than blocking real visitors.
 
@@ -715,7 +752,7 @@ These are deliberate boundaries of the Core tier, not bugs.
 
 ## Core and Pro
 
-| | Core (`arout/forms`) | Pro (planned) |
+| | Core (`arout/rhapsody-forms`) | Pro (planned) |
 |---|:---:|:---:|
 | Forms defined in PHP, `rhapsody_form()` tag | yes | yes |
 | Ten field types, validation rules | yes | yes |
@@ -739,19 +776,19 @@ Pro will be a separate package that depends on Core and builds on the events and
 
 1. **Deactivate the module** with the framework's module command, the counterpart of `module:install` (run `php rhapsody list` to see the exact name in your version, for example `module:uninstall`):
    ```bash
-   php rhapsody module:uninstall forms
+   php rhapsody module:uninstall rhapsody-forms
    ```
-   This stops the module from running. **Your submissions stay in the database.**
+   This stops the module from running. **Your submissions stay in the database**, unless you set `"delete_data_on_uninstall": true` in the settings file *before* running this command, in which case the table is dropped too.
 2. **Remove the package** if you no longer want the code:
    ```bash
-   composer remove arout/forms
+   composer remove arout/rhapsody-forms
    ```
 3. **Remove the `rhapsody_form()` tags** from your templates and the `FormRegistry::register()` calls from your `bootstrap.php`.
-4. **Delete the data, if you want it gone for good.** This cannot be undone, so export a CSV first. In your database tool run:
+4. **Delete the data, if you did not use `delete_data_on_uninstall` and want it gone for good.** This cannot be undone, so export a CSV first. In your database tool run:
    ```sql
-   DROP TABLE mod_arout_forms_submissions;
+   DROP TABLE mod_arout_rhapsody_forms_submissions;
    ```
-   and delete `storage/modules/arout-forms/`.
+   and delete `storage/modules/arout-rhapsody-forms/`.
 
 ---
 

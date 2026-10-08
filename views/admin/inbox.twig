@@ -1,0 +1,66 @@
+{#
+  The submissions list. Extends the framework's module layout, so it picks up
+  the active theme's navigation and the baseline .rhapsody-* styles.
+#}
+{% extends "@core/module-layout.twig" %}
+
+{% block module_content %}
+    <header class="rhapsody-page-header">
+        <h1 class="rhapsody-title">Form submissions</h1>
+        <p class="rhapsody-muted">{{ total_all }} in total, {{ unread_all }} unread.</p>
+    </header>
+
+    <form method="get" action="{{ base }}{{ prefix }}/inbox" class="rhapsody-form rhapsody-form--inline">
+        <select name="form" class="rhapsody-select" aria-label="Form">
+            <option value="">All forms</option>
+            {% for f in forms %}
+                <option value="{{ f.slug }}"{% if f.slug == filter_form %} selected{% endif %}>{{ f.name }} ({{ f.total }}{% if f.unread %}, {{ f.unread }} new{% endif %})</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="rhapsody-select" aria-label="Status">
+            <option value="">New and read</option>
+            <option value="new"{% if filter_status == 'new' %} selected{% endif %}>New only</option>
+            <option value="read"{% if filter_status == 'read' %} selected{% endif %}>Read only</option>
+        </select>
+        <button type="submit" class="rhapsody-btn rhapsody-btn--secondary rhapsody-btn--sm">Filter</button>
+        <a class="rhapsody-btn rhapsody-btn--secondary rhapsody-btn--sm" href="{{ export_url }}">Export CSV</a>
+    </form>
+    <p class="rhapsody-help rhapsody-muted">CSV export holds up to {{ max_export }} submissions, oldest first. Pick a form first to export a single form, with one column per field.</p>
+
+    {% if rows is empty %}
+        <div class="rhapsody-alert rhapsody-alert--info">No submissions match.</div>
+    {% else %}
+        <div class="rhapsody-table-wrap">
+            <table class="rhapsody-table">
+                <thead>
+                    <tr>
+                        <th>Received (UTC)</th>
+                        <th>Form</th>
+                        <th>Message</th>
+                        <th>Status</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                        <tr>
+                            <td>{{ r.created_at }}</td>
+                            <td>{{ r.form_name }}</td>
+                            <td><a href="{{ r.url }}">{{ r.summary ?: '(empty)' }}</a></td>
+                            <td>
+                                {% if r.status == 'new' %}<span class="rhapsody-badge rhapsody-warn">New</span>{% else %}<span class="rhapsody-badge">Read</span>{% endif %}
+                            </td>
+                            <td><span class="rhapsody-badge" title="Notification email status">{{ r.notify_status }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <p class="rhapsody-muted">Page {{ page }} of {{ pages }} ({{ total }} matching).</p>
+        <div class="rhapsody-actions">
+            {% if prev_url %}<a class="rhapsody-btn rhapsody-btn--secondary rhapsody-btn--sm" href="{{ prev_url }}">Newer</a>{% endif %}
+            {% if next_url %}<a class="rhapsody-btn rhapsody-btn--secondary rhapsody-btn--sm" href="{{ next_url }}">Older</a>{% endif %}
+        </div>
+    {% endif %}
+{% endblock %}
