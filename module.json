@@ -56,8 +56,8 @@
       "key": "include_css",
       "type": "boolean",
       "default": true,
-      "label": "Include the default form styles",
-      "help": "Turn off if your theme styles the .rforms-* classes itself."
+      "label": "Include the shared form styles",
+      "help": "On by default: forms use the same baseline look as other Rhapsody module screens, plus a small script that keeps text readable on dark themes. Turn off if your theme styles the .rhapsody-* or .rforms__* classes itself."
     },
     {
       "key": "delete_data_on_uninstall",

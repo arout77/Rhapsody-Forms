@@ -360,24 +360,46 @@ If you type a slug that is not registered, the tag prints a small HTML comment i
 
 ### Styling
 
-The form is plain, semantic HTML with predictable class names, so any theme can style it:
+A form looks like the rest of the Rhapsody module screens, on any theme, because it uses the **same shared baseline stylesheet and the same `.rhapsody-*` class contract** the module pages use. The first form on a page prints that stylesheet once; later forms on the same page reuse it. It adapts to light and dark backgrounds, takes its text colour and font from the surrounding page, and reads the same optional theme variables:
 
-| Class | Element |
-|-------|---------|
-| `rforms` | the `<form>` |
-| `rforms__field` | wrapper around one label and input |
-| `rforms__field--error` | added to a field wrapper that failed validation |
-| `rforms__label` | a field's label |
-| `rforms__input` | text-like inputs, selects and textareas |
-| `rforms__choice` | one radio button or checkbox with its label |
-| `rforms__help` | the small help line |
-| `rforms__error` | a field's error message |
-| `rforms__alert`, `rforms__alert--success`, `rforms__alert--error` | the message banner above the form |
-| `rforms__submit` | the submit button |
+| Variable | Controls |
+|----------|----------|
+| `--rhapsody-primary` | the button colour and focus rings (defaults to indigo) |
+| `--rhapsody-primary-contrast` | text colour on the button |
+| `--rhapsody-danger`, `--rhapsody-success` | error and success colours |
+| `--rhapsody-radius` | corner roundness |
+| `--rhapsody-gap` | spacing between fields |
+| `--rhapsody-border`, `--rhapsody-surface` | input borders and tinted backgrounds |
 
-By default the module also includes a small stylesheet that adapts to light and dark backgrounds and reads the same optional CSS variables as the other Rhapsody modules (`--rhapsody-primary`, `--rhapsody-primary-contrast`, `--rhapsody-danger`, `--rhapsody-radius`, `--rhapsody-gap`). Set those in your theme's `:root` and the form follows.
+**To make forms match your theme, set these once in the theme's `:root`**, for example `--rhapsody-primary: #b8860b;`. Every form and every module screen then follows. This is the single biggest step: without it the button uses the default indigo.
 
-If your theme styles the `rforms__*` classes itself, switch the built-in styles off with the `include_css` [setting](#settings).
+Every element also carries a module-specific `rforms__*` class, so a theme can restyle just the forms without touching other module screens:
+
+| Element | Shared class | Forms hook |
+|---------|--------------|------------|
+| the `<form>` | `rhapsody-form` | `rforms` |
+| one label + input | `rhapsody-field` (`rhapsody-field--error` when invalid) | `rforms__field` (`rforms__field--error`) |
+| a label | `rhapsody-label` | `rforms__label` |
+| text inputs, selects, textareas | `rhapsody-input`, `rhapsody-select`, `rhapsody-textarea` | `rforms__input` |
+| a radio button or checkbox with its label | *(none in the shared contract)* | `rforms__choice` |
+| the help line | `rhapsody-help` | `rforms__help` |
+| an error message | `rhapsody-error` | `rforms__error` |
+| the message banner | `rhapsody-alert`, `rhapsody-alert--success`, `rhapsody-alert--error` | `rforms__alert`, `rforms__alert--success`, `rforms__alert--error` |
+| the submit button | `rhapsody-btn` | `rforms__submit` |
+
+The form sits inside a wrapper `<div class="rhapsody-ui rforms-wrap">`. The module resets that wrapper so it is just a plain box inside your page (the shared baseline normally makes it a full-width, padded page container).
+
+**Light and dark themes.** A form takes its text colour from the page around it. Some dark themes colour individual elements and leave their containers at the browser's default black, which would make a form black-on-dark and invisible. To prevent that, the first form on a page also prints a tiny script. For each form it:
+
+1. finds the background actually painted behind it (the first mostly opaque background colour on the form's parent elements);
+2. checks the text against it, and **only if the contrast is below the accessibility minimum (4.5:1)** puts a readable colour on the form;
+3. sets `color-scheme` (unless the theme already did) so native controls, such as the open drop-down list, match a light or dark page.
+
+A theme that already works is left alone. The check repeats when the page finishes loading and when a dark-mode switch changes a class or `data-theme` on `<html>` or `<body>`.
+
+It can only judge what it can read. If your theme paints its dark look with a gradient or image instead of a background colour, it falls back to the usual "this page is dark" markers (a `dark` class, `data-theme="dark"`, or `color-scheme: dark` on `<html>` or `<body>`). With none of those it assumes a light page. The simple fix for such a theme is to give the footer or section the form sits in a `background-color`, or to set `color` on that container.
+
+If your theme provides its own form styling and you want none of the shared look, switch the built-in styles off with the `include_css` [setting](#settings). The classes stay on the elements, so your own CSS still has something to target.
 
 ---
 
@@ -542,7 +564,7 @@ storage/modules/arout-rhapsody-forms/settings.json
 | `min_submit_seconds` | `2` | How long a form must have been open before a submission is accepted. Bots submit instantly; people do not. |
 | `trusted_proxy_header` | *(empty)* | The header your proxy or CDN uses to pass the visitor's address. **Leave empty unless you are behind a proxy you control.** See [If your site is behind a proxy or CDN](#if-your-site-is-behind-a-proxy-or-cdn). |
 | `retention_days` | `0` | Delete submissions older than this many days. `0` keeps everything until you delete it. |
-| `include_css` | `true` | Include the module's default form styles. Set `false` if your theme styles the `rforms__*` classes itself. |
+| `include_css` | `true` | Print the shared baseline stylesheet, the small wrapper reset and the contrast script with the forms. Set `false` if your theme styles the `rhapsody-*` / `rforms__*` classes itself. |
 | `delete_data_on_uninstall` | `false` | If `true` when you uninstall the module, the submissions table is dropped as well. Off by default, so an uninstall never destroys your data. See [Uninstalling](#uninstalling). |
 
 Example (keep your existing `signing_secret` line in the real file):
@@ -716,6 +738,9 @@ Open the submission in the inbox and read its email status:
 - `failed`: the mail server refused it. Look for a line starting `Forms: notification for submission` in the PHP error log.
 - `sent` but still missing: check spam folders. Make sure your sending domain has SPF and DKIM records; the From address is always your site's own.
 
+**The labels or inputs are invisible (usually a dark theme).**
+The form takes its text colour from the page, and the contrast script could not tell the page is dark. View Source and check that `<script id="rforms-guard">` is present (it is not when `include_css` is `false`). Then give the section the form sits in a `background-color`, or add a `dark` class or `data-theme="dark"` to `<html>`, or set `color` on the container. Setting `--rhapsody-primary` alone changes only the button.
+
 **The captcha box does not appear.**
 Both `RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY` must be set in `.env`. With either missing the module treats reCAPTCHA as not configured.
 
@@ -745,6 +770,7 @@ These are deliberate boundaries of the Core tier, not bugs.
 - **Retention clean-up is opportunistic** (see [Settings](#settings)): it depends on new submissions arriving.
 - **Listeners run synchronously,** so slow listeners slow the visitor's request.
 - **CSV export is capped at 25,000 rows per file** (see [CSV export and spreadsheets](#csv-export-and-spreadsheets)).
+- **The dark-theme contrast check works from background colours and common dark-mode markers.** A theme that paints its dark look only with a gradient or image, and has no marker, is treated as light until you give the area a `background-color` (see [Styling](#styling)).
 - **Times are stored and shown in UTC.**
 - **A failing veto listener fails open:** if a spam filter crashes, the submission goes through rather than blocking real visitors.
 

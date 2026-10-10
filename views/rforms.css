@@ -1,0 +1,46 @@
+.rforms {
+    --_primary: var(--rhapsody-primary, #4f46e5);
+    --_on-primary: var(--rhapsody-primary-contrast, #fff);
+    --_danger: var(--rhapsody-danger, #dc2626);
+    --_radius: var(--rhapsody-radius, 0.5rem);
+    --_gap: var(--rhapsody-gap, 1rem);
+    --_border: var(--rhapsody-border, color-mix(in oklab, currentColor 40%, transparent));
+    --_surface: var(--rhapsody-surface, color-mix(in oklab, currentColor 8%, transparent));
+
+    display: grid;
+    gap: var(--_gap);
+    max-inline-size: 40rem;
+    color: inherit;
+    font: inherit;
+    line-height: 1.5;
+    accent-color: var(--_primary);
+    }
+    .rforms *, .rforms *::before, .rforms *::after { box-sizing: border-box; }
+
+    .rforms .rforms__field { display: grid; gap: 0.35rem; }
+    .rforms .rforms__label { font-size: 0.9rem; font-weight: 600; color: inherit; }
+
+    /* (0,2,0) so theme rules like input[type="text"] don't win */
+    .rforms .rforms__input {
+    inline-size: 100%;
+    padding: 0.55rem 0.75rem;
+    color: inherit;
+    font: inherit;
+    background: var(--_surface);
+    border: 1px solid var(--_border);
+    border-radius: var(--_radius);
+    }
+    .rforms .rforms__input:focus-visible {
+    outline: 2px solid var(--_primary);
+    outline-offset: 1px;
+    }
+    .rforms .rforms__submit {
+    padding: 0.55rem 1.1rem;
+    color: var(--_on-primary);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--_primary);
+    border: 1px solid transparent;
+    border-radius: var(--_radius);
+}

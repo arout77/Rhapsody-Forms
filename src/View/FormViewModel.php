@@ -26,6 +26,7 @@ final class FormViewModel
         ?array $flash,
         string $captchaHtml,
         ?string $css,
+        ?string $guardJs = null,
     ): array {
         $values = is_array($flash['values'] ?? null) ? $flash['values'] : [];
         $errors = is_array($flash['errors'] ?? null) ? $flash['errors'] : [];
@@ -54,6 +55,7 @@ final class FormViewModel
             'fields'       => $fields,
             'captcha_html' => $captchaHtml,
             'css'          => $css,
+            'guard_js'     => $guardJs,
         ];
     }
 

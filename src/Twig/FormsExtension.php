@@ -7,6 +7,7 @@ use Arout\Forms\Support\CaptchaBridge;
 use Arout\Forms\Support\FlashState;
 use Arout\Forms\Support\FormToken;
 use Arout\Forms\Support\LocalPath;
+use Arout\Forms\View\FormGuard;
 use Arout\Forms\View\FormStyles;
 use Arout\Forms\View\FormViewModel;
 use Closure;
@@ -69,8 +70,10 @@ final class FormsExtension extends AbstractExtension
         $options = ($this->options)();
         $captcha = ($form->settings['captcha'] === 'auto' && CaptchaBridge::isEnabled()) ? CaptchaBridge::widget($context) : '';
         $css     = null;
+        $guardJs = null;
         if (($options['include_css'] ?? true) && ! $this->cssEmitted) {
             $css              = FormStyles::css();
+            $guardJs          = FormGuard::js();
             $this->cssEmitted = true;
         }
 
@@ -84,6 +87,7 @@ final class FormsExtension extends AbstractExtension
             FlashState::pull($form->slug),
             $captcha,
             $css,
+            $guardJs,
         );
 
         return $env->render('@' . $this->viewsNamespace . '/form.twig', $model);
